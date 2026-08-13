@@ -1,0 +1,52 @@
+name: seeker_pretrain
+
+shape_meta: &shape_meta
+  obs:
+    agentview_image:
+      shape: [3, 256, 256]
+      type: rgb
+    robot0_eye_in_hand_image:
+      shape: [3, 256, 256]
+      type: rgb
+    robot0_eef_pos:
+      shape: [3]
+    robot0_eef_rot:
+      shape: [9]
+    robot0_gripper_qpos:
+      shape: [2]
+  action:
+    shape: [10]
+
+env_runner:
+  _target_: seeker.env_runner.seeker_robomimic_image_runner.SeekerRobomimicImageRunner
+  env_name: ${env_name}
+  dataset_path: ${dataset_path}
+  cache_dir: ${cache_dir}
+  shape_meta: *shape_meta
+  n_test: 50
+  n_test_vis: 5
+  test_start_seed: 100000
+  max_steps: ${get_max_steps:${task_name}}
+  n_obs_steps: ${n_obs_steps}
+  n_action_steps: ${n_action_steps}
+  render_obs_key: agentview_image
+  fps: 10
+  crf: 22
+  past_action: ${past_action_visible}
+  tqdm_interval_sec: 1.0
+  n_envs: ${n_envs}
+  action_rep: ${action_rep}
+  strict_task_success: true
+  enable_prediction_video_overlay: true
+
+dataset:
+  _target_: ${dataset}
+  n_demo: ${n_demo}
+  demo_count_mode: ${dataset_demo_count_mode}
+  shape_meta: *shape_meta
+  dataset_path: ${dataset_path}
+  horizon: ${horizon}
+  val_ratio: 0.0
+  image_size: ${image_size}
+  action_rep: ${action_rep}
+  cache_dir: ${cache_dir}

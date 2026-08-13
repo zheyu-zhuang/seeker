@@ -1,0 +1,8 @@
+name: rand_bg${num_bg}
+family: background_generalization
+focus_profile: background
+num_bg: 25
+dataset_suffix: ${eval:"'' if int(${num_bg}) == 0 else '_tex${num_bg}'"}
+dataset_path: datasets/mimicgen/${task_name}/${task_name}_lmdb${experiment.dataset_suffix}
+shuffle_table_texture: true
+experiment_path: background_generalization/${method.name}

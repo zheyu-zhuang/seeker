@@ -1,0 +1,68 @@
+diff --git a/robosuite/robots/single_arm.py b/robosuite/robots/single_arm.py
+index 598a168e..bbae18d6 100644
+--- a/robosuite/robots/single_arm.py
++++ b/robosuite/robots/single_arm.py
+@@ -310,6 +310,10 @@ class SingleArm(Manipulator):
+         def eef_quat(obs_cache):
+             return T.convert_quat(self.sim.data.get_body_xquat(self.robot_model.eef_name), to="xyzw")
+ 
++        @sensor(modality=modality)
++        def eef_rot(obs_cache):
++            return np.array(self.sim.data.site_xmat[self.eef_site_id]).flatten()
++
+         @sensor(modality=modality)
+         def eef_vel_lin(obs_cache):
+             return np.array(self.sim.data.get_body_xvelp(self.robot_model.eef_name))
+@@ -318,10 +322,11 @@ class SingleArm(Manipulator):
+         def eef_vel_ang(obs_cache):
+             return np.array(self.sim.data.get_body_xvelr(self.robot_model.eef_name))
+ 
+-        sensors = [eef_pos, eef_quat, eef_vel_lin, eef_vel_ang]
+-        names = [f"{pf}eef_pos", f"{pf}eef_quat", f"{pf}eef_vel_lin", f"{pf}eef_vel_ang"]
++        sensors = [eef_pos, eef_rot, eef_quat, eef_vel_lin, eef_vel_ang]
++        names = [f"{pf}eef_pos", f"{pf}eef_rot", f"{pf}eef_quat",
++                 f"{pf}eef_vel_lin", f"{pf}eef_vel_ang"]
+         # Exclude eef vel by default
+-        actives = [True, True, False, False]
++        actives = [True, True, True, False, False]
+ 
+         # add in gripper sensors if this robot has a gripper
+         if self.has_gripper:
+diff --git a/robosuite/macros.py b/robosuite/macros.py
+--- a/robosuite/macros.py
++++ b/robosuite/macros.py
+@@ -48,11 +48,11 @@ FILE_LOGGING_LEVEL = None
+ 
+ # Override with macros from macros_private.py file, if it exists
+-try:
+-    from robosuite.macros_private import *
+-except ImportError:
+-    import robosuite
+-    from robosuite.utils.log_utils import ROBOSUITE_DEFAULT_LOGGER
++# try:
++#     from robosuite.macros_private import *
++# except ImportError:
++#     import robosuite
++#     from robosuite.utils.log_utils import ROBOSUITE_DEFAULT_LOGGER
+ 
+-    ROBOSUITE_DEFAULT_LOGGER.warn("No private macro file found!")
+-    ROBOSUITE_DEFAULT_LOGGER.warn("It is recommended to use a private macro file")
+-    ROBOSUITE_DEFAULT_LOGGER.warn("To setup, run: python {}/scripts/setup_macros.py".format(robosuite.__path__[0]))
++#     ROBOSUITE_DEFAULT_LOGGER.warn("No private macro file found!")
++#     ROBOSUITE_DEFAULT_LOGGER.warn("It is recommended to use a private macro file")
++#     ROBOSUITE_DEFAULT_LOGGER.warn("To setup, run: python {}/scripts/setup_macros.py".format(robosuite.__path__[0]))
+diff --git a/robosuite/wrappers/__init__.py b/robosuite/wrappers/__init__.py
+--- a/robosuite/wrappers/__init__.py
++++ b/robosuite/wrappers/__init__.py
+@@ -4,7 +4,7 @@ from robosuite.wrappers.demo_sampler_wrapper import DemoSamplerWrapper
+ from robosuite.wrappers.domain_randomization_wrapper import DomainRandomizationWrapper
+ from robosuite.wrappers.visualization_wrapper import VisualizationWrapper
+ 
+-try:
+-    from robosuite.wrappers.gym_wrapper import GymWrapper
+-except:
+-    print("Warning: make sure gym is installed if you want to use the GymWrapper.")
++# try:
++#     from robosuite.wrappers.gym_wrapper import GymWrapper
++# except:
++#     print("Warning: make sure gym is installed if you want to use the GymWrapper.")

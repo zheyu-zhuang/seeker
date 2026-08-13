@@ -1,0 +1,31 @@
+name: rvt2
+focus:
+  source:
+    name: rvt2_heatmap
+    checkpoint: .weights/mimicgen.rvt2_heatmap.ckpt
+  profiles:
+    default:
+      views:
+        agentview: focus_crop
+        eye_in_hand: pass_through
+      overlay: {}
+    background:
+      views:
+        agentview: focus_mask_crop
+        eye_in_hand: random_overlay
+      overlay:
+        guided:
+          prob: 0.5
+          noise_std: 0.05
+          alpha_min: 0.3
+          alpha_max: 0.8
+          warmup_steps: 2500
+          background_path: datasets/backgrounds
+        random:
+          prob: 0.5
+          alpha_min: 0.6
+          alpha_max: 0.6
+          warmup_steps: 2500
+          background_path: datasets/backgrounds
+mirror_augmentation:
+  enable: false

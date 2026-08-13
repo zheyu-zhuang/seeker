@@ -1,0 +1,6 @@
+# External simulation-suite checkouts for the MimicGen Seeker stack.
+# Use exact commits; do not rely on moving branch names.
+
+robosuite https://github.com/ARISE-Initiative/robosuite b9d8d3de5e3dfd1724f4a0e6555246c460407daa robosuite.patch
+robomimic https://github.com/ARISE-Initiative/robomimic d0b37cf214bd24fb590d182edb6384333f67b661 robomimic.patch
+mimicgen https://github.com/NVlabs/mimicgen d360d1d10225f3ff3cf7cf74db1cdbf9a2b79ecb mimicgen.patch

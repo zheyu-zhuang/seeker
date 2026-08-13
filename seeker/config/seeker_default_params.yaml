@@ -1,0 +1,21 @@
+# Default Seeker model parameters shared across training/inference.
+seeker:
+  top_p: 0.8
+  select_n_heads: 4
+
+backbone:
+  name: DINOv3
+  ckpt_path: .weights/dinov3_vits16plus.pth
+
+query_composer:
+  use_rotation: false
+  task_emb_dim: 512
+  hidden_mult: 2
+  proprio_dim: 4
+  disable_proprio: false
+
+intent_refiner:
+  num_refinement_iters: 3
+  entmax_alpha: 1.3
+  hidden_multiplier: 4
+  disable_head_gating: false

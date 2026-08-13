@@ -1,0 +1,26 @@
+# Default RVT2Heatmap parameters shared across training/inference.
+query_composer:
+  # gripper_only matches the RVT2Heatmap heuristic progress signal.
+  proprio_mode: gripper_only
+  task_emb_dim: 512
+  hidden_mult: 4
+  proprio_dim: 1
+
+rvt2_heatmap:
+  camera: agentview
+  # dino uses frozen DINOv3 patch tokens; conv uses a trainable MVT-style patch stem.
+  patch_backbone: dino
+  conv_patch_dim: 384
+  dino_ckpt: .weights/dinov3_vits16plus.pth
+  dino_image_size: 224
+  patch_size: 16
+  hidden_dim: 256
+  transformer_depth: 4
+  transformer_heads: 8
+  transformer_dropout: 0.1
+  target_sigma_patches: 0.75
+  joint_vel_atol: 0.1
+  stopped_buffer_len: 4
+  include_final: true
+  mute_initial_gripper_open: true
+  keypoint_box_zoom: 4.0

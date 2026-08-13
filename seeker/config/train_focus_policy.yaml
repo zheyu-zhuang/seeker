@@ -1,0 +1,175 @@
+defaults:
+  - _self_
+  - task: seeker_policy
+  - method: seeker
+  - experiment: default
+  - override hydra/job_logging: disabled
+
+# Run
+name: focus_policy
+_target_: seeker.workspace.train_focus_policy_workspace.TrainFocusPolicyWorkspace
+seed: 0
+batch_size: 128
+enc_n_hidden: 128
+action_rep: absolute
+disable_eih: false
+cache_dir: null
+
+# Method/data selection
+method_name: ${method.name}
+focus_profile_name: ${experiment.focus_profile}
+focus_profile: ${method.focus.profiles.${focus_profile_name}}
+experiment_family: ${experiment.family}
+experiment_condition_name: ${experiment.name}
+experiment_path: ${experiment.experiment_path}
+num_bg: ${experiment.num_bg}
+eih_mode: ${eval:"'disabled' if ${disable_eih} else '${focus_profile.views.eye_in_hand}'"}
+mirror_augmentation: ${method.mirror_augmentation}
+shuffle_table_texture: ${experiment.shuffle_table_texture}
+
+# Task/data
+task_name: square_d0
+shape_meta: ${task.shape_meta}
+dataset: seeker.dataset.mimicgen_dataset.MimicGenDataset
+dataset_path: ${experiment.dataset_path}
+n_demo: 100
+horizon: 16
+n_obs_steps: 2
+n_action_steps: 8
+n_latency_steps: 0
+dataset_obs_steps: ${n_obs_steps}
+past_action_visible: false
+obs_as_global_cond: true
+n_envs: 25
+env_name: null
+
+# Encoder
+selected_obs_encoder: ${focus_conditioned_obs_encoder}
+focus_conditioned_obs_encoder:
+  _target_: seeker.model.encoder.focus_conditioned_encoder.FocusConditionedObsEncoder
+  n_hidden: ${enc_n_hidden}
+  resnet_pretrained_imagenet: true
+  focus_view_transform:
+    source: ${method.focus.source}
+    vit_in: 224
+    low_res: 84
+    out_res: 76
+    views:
+      agentview: ${focus_profile.views.agentview}
+      eye_in_hand: ${eih_mode}
+    overlay: ${focus_profile.overlay}
+
+# Policy
+policy:
+  _target_: seeker.policy.diffusion_policy.DiffusionPolicy
+  shape_meta: ${shape_meta}
+  action_rep: ${action_rep}
+  obs_encoder: ${selected_obs_encoder}
+  enc_n_hidden: ${enc_n_hidden}
+  horizon: ${horizon}
+  n_action_steps: ${add_int:${n_action_steps},${n_latency_steps}}
+  n_obs_steps: ${n_obs_steps}
+  num_inference_steps: 100
+  obs_as_global_cond: ${obs_as_global_cond}
+  diffusion_step_embed_dim: 128
+  down_dims: [512, 1024, 2048]
+  kernel_size: 5
+  n_groups: 8
+  cond_predict_scale: true
+  noise_scheduler:
+    _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
+    num_train_timesteps: 100
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    variance_type: fixed_small
+    clip_sample: true
+    prediction_type: epsilon
+
+# Optimization
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  betas: [0.95, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-6
+
+ema:
+  _target_: seeker.model.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+# Loaders
+dataloader:
+  batch_size: ${batch_size}
+  num_workers: 8
+  shuffle: true
+  pin_memory: true
+  persistent_workers: true
+
+val_dataloader:
+  batch_size: ${batch_size}
+  num_workers: 8
+  shuffle: false
+  pin_memory: true
+  persistent_workers: true
+
+# Schedule
+training:
+  device: cuda:0
+  seed: ${seed}
+  debug: false
+  resume: true
+  lr_scheduler: cosine
+  lr_warmup_steps: 500
+  num_epochs: ${divide:50000,${n_demo}}
+  gradient_accumulate_every: 1
+  use_ema: true
+  rollout_every: ${divide:1000,${n_demo}}
+  checkpoint_every: ${divide:1000,${n_demo}}
+  val_every: 10
+  sample_every: 10
+  max_train_steps: null
+  max_val_steps: null
+  tqdm_interval_sec: 1.0
+
+# Logging/checkpoints
+exp_name: "${n_demo}d_${action_rep}_${method_name}_${experiment_condition_name}_av-${policy.obs_encoder.focus_view_transform.views.agentview}_eih-${eih_mode}_s${seed}"
+logging:
+  project: seeker-policy
+  resume: true
+  id: null
+  name: ${task_name}__${method_name}__${experiment_condition_name}__${exp_name}
+  group: ${task_name}/${experiment_path}
+  job_type: train_policy
+  tags:
+    - task=${task_name}
+    - stage=policy
+    - model=focus_conditioned
+    - focus_model=${method_name}
+    - experiment_family=${experiment_family}
+    - method=${method_name}
+    - experiment=${experiment_condition_name}
+    - num_bg=${num_bg}
+    - demonstrations=${n_demo}
+    - seed=${seed}
+    - agentview_mode=${policy.obs_encoder.focus_view_transform.views.agentview}
+    - eye_in_hand_mode=${policy.obs_encoder.focus_view_transform.views.eye_in_hand}
+
+checkpoint:
+  topk:
+    monitor_key: test_mean_score
+    mode: max
+    k: 0
+    format_str: 'epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt'
+  save_last_ckpt: true
+  save_topk_full_ckpt: false
+
+hydra:
+  job:
+    override_dirname: ${name}
+  run:
+    dir: experiments/${task_name}/${experiment_path}/${exp_name}
