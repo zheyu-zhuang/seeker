@@ -1,0 +1,7 @@
+name: domain_randomization
+family: background_generalization
+focus_profile: domain_randomization
+num_bg: 25
+dataset_path: datasets/mimicgen/${task_name}/${task_name}_lmdb_tex25
+shuffle_table_texture: true
+experiment_path: domain_randomization/${method.name}

@@ -1,0 +1,7 @@
+name: default
+family: main
+focus_profile: default
+num_bg: 0
+dataset_path: datasets/mimicgen/${task_name}/${task_name}_lmdb
+shuffle_table_texture: false
+experiment_path: ${method.name}

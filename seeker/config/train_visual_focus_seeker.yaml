@@ -1,0 +1,218 @@
+defaults:
+  - _self_
+  - task: seeker_pretrain
+
+# -----------------------------
+# Runtime / Experiment
+# -----------------------------
+name: seeker
+_target_: seeker.workspace.train_seeker_workspace.TrainSeekerWorkspace
+
+seed: 0
+batch_size: 128
+action_rep: absolute
+
+obs_dropout: 0.0
+visual_mode: agentview
+image_size: 240 # resize 256 to 240 so 224 crop ratio is ~0.93
+seeker_input_res: 224
+
+# Seeker mechanism ablations — override from CLI, e.g.
+# seeker train --config-name train_visual_focus_seeker seeker_num_iters=1
+seeker_num_iters: 3
+seeker_disable_proprio: false
+seeker_disable_head_gating: false
+
+# -----------------------------
+# Dataset / Task
+# -----------------------------
+# `n_demo` is interpreted per task for Seeker pretraining.
+stage_stride: ${divide:5000,${n_demo}}
+
+# Override from CLI when needed, e.g.
+# seeker train --config-name train_visual_focus_seeker task_name=square_d2 n_demo=250
+task_name: mimicgen_multitask_demo_100
+dataset_path: datasets/mimicgen/${task_name}/${task_name}_lmdb
+cache_dir: null
+dataset_demo_count_mode: per_task
+shape_meta: ${task.shape_meta}
+exp_name: "view-${visual_mode}_action-${action_rep}_demos-${n_demo}_iters-${seeker_num_iters}_noprop-${seeker_disable_proprio}_nogate-${seeker_disable_head_gating}_seed-${seed}"
+n_demo: 100
+horizon: 16
+n_obs_steps: 1
+n_action_steps: 8
+n_latency_steps: 0
+dataset_obs_steps: ${n_obs_steps}
+past_action_visible: false
+obs_as_global_cond: true
+dataset: seeker.dataset.mimicgen_dataset.MimicGenDataset
+n_envs: 8
+env_name: null
+
+# -----------------------------
+# Policy
+# -----------------------------
+policy:
+  _target_: seeker.policy.seeker_training_policy.SeekerTrainingPolicy
+  shape_meta: ${shape_meta}
+
+  noise_scheduler:
+    _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
+    num_train_timesteps: 100
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    variance_type: fixed_small # fixed_small_log can be unstable
+    clip_sample: true # required when predict_epsilon=False
+    prediction_type: epsilon
+
+  horizon: ${horizon}
+  n_action_steps: ${add_int:${n_action_steps},${n_latency_steps}}
+  n_obs_steps: ${n_obs_steps}
+  num_inference_steps: 100
+  obs_as_global_cond: ${obs_as_global_cond}
+  diffusion_step_embed_dim: 128
+  down_dims: [128, 256, 512]
+  kernel_size: 5
+  n_groups: 8
+  cond_predict_scale: true
+  obs_dropout: ${obs_dropout}
+  image_size: ${image_size}
+  visual_mode: ${visual_mode}
+  stage_stride: ${stage_stride}
+  background_path: datasets/backgrounds
+  action_rep: ${action_rep}
+  weights: .weights/seeker.mimicgen.pth
+  seeker_overrides:
+    intent_refiner:
+      num_refinement_iters: ${seeker_num_iters}
+      disable_head_gating: ${seeker_disable_head_gating}
+    query_composer:
+      disable_proprio: ${seeker_disable_proprio}
+
+# -----------------------------
+# EMA
+# -----------------------------
+ema:
+  _target_: seeker.model.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+# -----------------------------
+# DataLoaders
+# -----------------------------
+dataloader:
+  batch_size: ${batch_size}
+  num_workers: 8
+  shuffle: true
+  pin_memory: true
+  persistent_workers: true
+  sampler:
+    type: task_balanced
+    samples_per_epoch: 100000
+
+val_dataloader:
+  batch_size: ${batch_size}
+  num_workers: 8
+  shuffle: false
+  pin_memory: true
+  persistent_workers: true
+
+# -----------------------------
+# Optimizer
+# -----------------------------
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  betas: [0.95, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-6
+
+# -----------------------------
+# Training
+# -----------------------------
+training:
+  device: cuda:0
+  seed: ${seed}
+  debug: false
+  resume: true
+
+  # Optimization
+  lr_scheduler: cosine
+  lr_warmup_steps: 500
+  num_epochs: ${divide:30000,${n_demo}}
+  gradient_accumulate_every: 1
+
+  # EMA
+  use_ema: false
+
+  # Training loop control (epochs)
+  rollout_every: 10
+  checkpoint_every: 10
+  val_every: 10
+  sample_every: 10
+
+  # Steps per epoch
+  max_train_steps: null
+  max_val_steps: null
+
+  # Misc
+  tqdm_interval_sec: 1.0
+
+# -----------------------------
+# Logging
+# -----------------------------
+logging:
+  project: seeker_binned
+  resume: true
+  mode: disabled
+  name: ${task_name}__${name}__${exp_name}
+  group: ${task_name}/visual_focus
+  job_type: train_visual_focus
+  tags:
+    - task=${task_name}
+    - stage=visual_focus
+    - model=seeker
+    - demonstrations=${n_demo}
+    - seed=${seed}
+    - visual_mode=${visual_mode}
+    - action=${action_rep}
+    - seeker_num_iters=${seeker_num_iters}
+    - seeker_disable_proprio=${seeker_disable_proprio}
+    - seeker_disable_head_gating=${seeker_disable_head_gating}
+  id: null
+
+# -----------------------------
+# Checkpointing
+# -----------------------------
+checkpoint:
+  topk:
+    monitor_key: test_mean_score
+    mode: max
+    k: 0
+    format_str: 'epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt'
+  save_last_ckpt: false
+  save_last_snapshot: false
+  seeker_light_path: null
+
+# -----------------------------
+# Multi-run
+# -----------------------------
+multi_run:
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}__${exp_name}
+
+# -----------------------------
+# Hydra
+# -----------------------------
+hydra:
+  job:
+    override_dirname: ${name}
+  run:
+    dir: experiments/${task_name}/${name}/${exp_name}
+  sweep:
+    dir: experiments/${task_name}/${name}/${exp_name}
+    subdir: ${hydra.job.num}

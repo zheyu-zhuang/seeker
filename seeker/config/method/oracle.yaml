@@ -1,0 +1,19 @@
+name: oracle
+focus:
+  source:
+    name: oracle
+    camera_by_view:
+      agentview: agentview
+  profiles:
+    default:
+      views:
+        agentview: focus_crop
+        eye_in_hand: pass_through
+      overlay: {}
+    image_augmentation:
+      views:
+        agentview: disabled
+        eye_in_hand: disabled
+      overlay: {}
+mirror_augmentation:
+  enable: false

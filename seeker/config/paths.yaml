@@ -1,0 +1,7 @@
+# Centralized path defaults used by Seeker utilities.
+paths:
+  dataset_root: datasets/mimicgen
+  weights_dir: .weights
+  textures_dir: datasets/textures
+  backgrounds_dir: datasets/backgrounds
+  task_emb_cache: .weights/task_emb_cache.npz

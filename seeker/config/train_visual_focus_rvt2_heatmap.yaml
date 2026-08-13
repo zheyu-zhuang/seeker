@@ -1,0 +1,71 @@
+defaults:
+  - rvt2_default_params
+  - _self_
+
+name: rvt2_heatmap
+_target_: seeker.workspace.train_visual_focus_rvt2_heatmap_workspace.TrainRVT2HeatmapWorkspace
+
+seed: 0
+task_name: mimicgen_multitask
+exp_name: "demos-${n_demo}_seed-${seed}"
+dataset_path: datasets/mimicgen/${task_name}/${task_name}_lmdb
+cache_dir: null
+n_demo: 100
+dataset_demo_count_mode: per_task
+skip_first_episodes: 0
+
+batch_size: 128
+epochs: 200
+lr: 1.0e-4
+weight_decay: 1.0e-4
+val_ratio: 0.0
+num_workers: 4
+device: cuda
+sampler:
+  type: task_balanced
+  samples_per_epoch: 100000
+stage_stride: ${divide:5000,${n_demo}}
+
+resume: null
+load_weights: null
+no_resume_optimizer: false
+checkpoint_every: 5
+max_train_steps: null
+max_val_steps: null
+
+rvt2_heatmap:
+  mute_initial_gripper_open: true
+
+background_overlay:
+  enabled: true
+  background_path: datasets/backgrounds
+
+print_epoch_metrics: false
+print_run_summary: false
+show_label_progress: false
+vis_every_epochs: 1
+vis_num_samples: 8
+vis_alpha: 0.45
+vis_sampling: random
+
+logging:
+  project: seeker_binned
+  resume: true
+  mode: disabled
+  id: null
+  name: ${task_name}__${name}__${exp_name}
+  group: ${task_name}/visual_focus
+  job_type: train_visual_focus
+  tags:
+    - task=${task_name}
+    - stage=visual_focus
+    - model=rvt2_heatmap
+    - demonstrations=${n_demo}
+    - seed=${seed}
+
+hydra:
+  run:
+    dir: experiments/${task_name}/${name}/${exp_name}
+  sweep:
+    dir: experiments/${task_name}/${name}/${exp_name}
+    subdir: ${hydra.job.num}

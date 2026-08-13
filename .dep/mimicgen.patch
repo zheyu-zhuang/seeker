@@ -1,0 +1,22 @@
+diff --git a/mimicgen/__init__.py b/mimicgen/__init__.py
+--- a/mimicgen/__init__.py
++++ b/mimicgen/__init__.py
+@@ -25,12 +25,12 @@ except ImportError as e:
+     print("WARNING: robosuite environments not imported...")
+     print("Got error: {}".format(e))
+ 
+-try:
+-    from mimicgen.envs.robosuite.hammer_cleanup import *
+-    from mimicgen.envs.robosuite.kitchen import *
+-except ImportError as e:
+-    print("WARNING: robosuite task zoo environments not imported, possibly because robosuite_task_zoo is not installed...")
+-    print("Got error: {}".format(e))
++# try:
++#     from mimicgen.envs.robosuite.hammer_cleanup import *
++#     from mimicgen.envs.robosuite.kitchen import *
++# except ImportError as e:
++#     print("WARNING: robosuite task zoo environments not imported, possibly because robosuite_task_zoo is not installed...")
++#     print("Got error: {}".format(e))
+ 
+ # stores released dataset links and rollout horizons in global dictionary.
+ # Structure is given below for each type of dataset:

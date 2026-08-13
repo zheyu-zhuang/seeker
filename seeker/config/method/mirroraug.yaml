@@ -1,0 +1,41 @@
+name: mirroraug
+focus:
+  source:
+    name: none
+  profiles:
+    default:
+      views:
+        agentview: random_overlay
+        eye_in_hand: random_overlay
+      overlay:
+        random:
+          prob: 0.5
+          alpha_min: 0.6
+          alpha_max: 0.6
+          warmup_steps: 2500
+          background_path: datasets/backgrounds
+    image_augmentation:
+      views:
+        agentview: random_overlay
+        eye_in_hand: random_overlay
+      overlay:
+        random:
+          prob: 0.5
+          alpha_min: 0.6
+          alpha_max: 0.6
+          warmup_steps: 2500
+          background_path: datasets/backgrounds
+    domain_randomization:
+      views:
+        agentview: pass_through
+        eye_in_hand: pass_through
+      overlay: {}
+mirror_augmentation:
+  enable: true
+  prob: 0.5
+  frame_pose:
+    pos: [-0.1, 0.0, 1.0]
+    rot:
+      - [0.0, 1.0, 0.0]
+      - [1.0, 0.0, 0.0]
+      - [0.0, 0.0, -1.0]
