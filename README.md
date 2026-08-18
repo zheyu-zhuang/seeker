@@ -21,7 +21,6 @@ Zheyu Zhuang¹ · Ruiyu Wang¹ · Nick Heppert² · Johannes Fabian Hahn³ · Ab
 
 _¹KTH Royal Institute of Technology &nbsp;&nbsp;²University of Freiburg &nbsp;&nbsp;³Universität Hamburg_
 
-<!--
 ## Citation
 
 ```bibtex
@@ -35,7 +34,6 @@ _¹KTH Royal Institute of Technology &nbsp;&nbsp;²University of Freiburg &nbsp;
   note    = {CoRL 2026}
 }
 ```
--->
 
 ## Installation
 
