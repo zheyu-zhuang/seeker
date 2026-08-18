@@ -112,15 +112,19 @@ seeker train \
   task_name=three_piece_assembly_d2 \
   n_demo=100 \
   n_envs=25 \
-  name=policy_three_piece_baseline
+  exp_name=policy_three_piece_baseline
 ```
 
 Common overrides include:
 
 - `action_rep=absolute|delta`
 - `disable_eih=true|false`
-- `method=`
-- `exp_name=`
+- `method=seeker|mirroraug|rvt2|oracle`
+- `exp_name=<run_name>`
+
+Use `exp_name` to label a particular run and its output directory. `name` is
+the training-family identifier supplied by the selected config (for example,
+`focus_policy` or `seeker`) and normally should not be overridden.
 
 Config: [`train_focus_policy.yaml`](./seeker/config/train_focus_policy.yaml).
 
@@ -130,7 +134,7 @@ Config: [`train_focus_policy.yaml`](./seeker/config/train_focus_policy.yaml).
 seeker train \
   --config-name=train_visual_focus_seeker \
   task_name=three_piece_assembly_d2 \
-  name=seeker_pretrain_three_piece
+  exp_name=seeker_pretrain_three_piece
 ```
 
 `n_demo=100` by default. The task must first be rerendered as in the [Quickstart](#quickstart).
@@ -156,7 +160,7 @@ seeker train \
   --config-name=train_visual_focus_seeker \
   task_name=mimicgen_multitask_demo_300 \
   cache_dir=datasets/mimicgen/mimicgen_multitask_demo_300/mimicgen_multitask_demo_300_lmdb \
-  name=seeker_pretrain_baseline
+  exp_name=seeker_pretrain_baseline
 ```
 
 The released `seeker.mimicgen.pth` was trained jointly on all six canonical MimicGen tasks. See [`seeker/model/WEIGHTS.md`](./seeker/model/WEIGHTS.md) for the exact recipe.
@@ -172,7 +176,7 @@ seeker train \
   experiment=background_generalization \
   method=seeker \
   num_bg=25 \
-  name=three_piece_bg
+  exp_name=three_piece_bg
 ```
 
 This trains on the texture-variant data (domain randomization) with each
@@ -199,7 +203,7 @@ experiment=domain_randomization
 
 Use `action_rep` on any policy training run:
 
-- `absolute`: predict world-frame absolute end-effector targets
+- `absolute`: predict world-frame absolute end-effector targets (paper default)
 - `delta`: predict chunked end-effector-frame deltas, converted back to absolute targets during rollout
 
 For example:
