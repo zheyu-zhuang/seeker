@@ -253,7 +253,6 @@ class SeekerRobomimicImageRunner:
                 if oracle_info is not None:
                     np_obs_dict["oracle_info"] = oracle_info
                 if self.past_action and (past_action is not None):
-                    # TODO: not tested
                     np_obs_dict["past_action"] = past_action[
                         :, -(self.n_obs_steps - 1) :
                     ].astype(np.float32)

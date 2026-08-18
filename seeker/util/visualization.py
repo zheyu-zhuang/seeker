@@ -485,7 +485,6 @@ def save_attention_heads_video(
     score_softmax_over_heads: bool = False,
     save_frames_every=10,
 ):
-    # ---- color palette for bars (6 heads) ----
     HEAD_COLORS = [
         (0, 114, 178),  # blue
         (230, 159, 0),  # orange
@@ -524,7 +523,6 @@ def save_attention_heads_video(
     else:
         raise ValueError(f"Unexpected head_score shape {tuple(head_score.shape)}")
 
-    # ---- treat head_score as omega already (as you set) ----
     if score_softmax_over_heads:
         w_bar = torch.softmax(s, dim=1)
     else:
@@ -538,7 +536,6 @@ def save_attention_heads_video(
         N = a.shape[-1]
     assert N == grid_hw * grid_hw, f"N={N} not compatible with grid_hw={grid_hw}"
 
-    # normalize attention per head (optional)
     if normalize_sum1:
         a = a / (a.sum(dim=-1, keepdim=True) + 1e-8)
 
@@ -550,7 +547,6 @@ def save_attention_heads_video(
         mode="nearest",
     ).reshape(T, Hh, 1, H, W)
 
-    # per-head per-frame contrast scaling
     if minmax_per_head:
         vmin = a_up.amin(dim=(-2, -1), keepdim=True)
         vmax = a_up.amax(dim=(-2, -1), keepdim=True)
@@ -561,7 +557,6 @@ def save_attention_heads_video(
     base = image_to_float01(images, source="imagenet")  # [T,3,H,W]
     lut = _magma_lut(images.device)  # [256,3]
 
-    # tile size (downscale)
     tile_h = max(8, int(round(H * tile_scale)))
     tile_w = max(8, int(round(W * tile_scale)))
 
@@ -590,7 +585,6 @@ def save_attention_heads_video(
         y_img0 = top_text_h + bar_h
 
         for h in range(Hh):
-            # overlay (full-res)
             img = base[t]  # [3,H,W]
             m = a_vis[t, h, 0]  # [H,W] in [0,1]
 
@@ -608,7 +602,6 @@ def save_attention_heads_video(
 
             x0 = h * (tile_w + gap)
 
-            # ---- white bar region (light gray outline) ----
             draw.rectangle(
                 [x0, y_bar0, x0 + tile_w, y_bar0 + bar_h], fill=(255, 255, 255)
             )
@@ -618,7 +611,6 @@ def save_attention_heads_video(
                 width=1,
             )
 
-            # bar fill (colored)
             w = float(w_bar[t, h].item())  # in [0,1]
             inner_w = max(1, tile_w - 2 * bar_margin)
             inner_h = max(1, bar_h - 2 * bar_margin)
@@ -629,20 +621,17 @@ def save_attention_heads_video(
             bx1 = bx0 + inner_w
             by1 = by0 + inner_h
 
-            # track
             draw.rectangle(
                 [bx0, by0, bx1, by1],
                 fill=(245, 245, 245),
                 outline=(210, 210, 210),
                 width=1,
             )
-            # fill
             if fill_w > 0:
                 draw.rectangle(
                     [bx0, by0, bx0 + fill_w, by1], fill=HEAD_COLORS[h], outline=None
                 )
 
-            # label
             pct = int(round(100 * w))
             label = f"{pct:02d}%"
             tb = draw.textbbox((0, 0), label, font=font)
@@ -651,14 +640,12 @@ def save_attention_heads_video(
             pad = 2
             tx = bx1 - tw - pad
 
-            # slightly higher than vertical center
             raise_px = 2
             ty = by0 + (inner_h - th) // 2 - raise_px
             ty = max(by0, min(ty, by1 - th))  # clamp
 
             draw.text((tx, ty), label, fill=(0, 0, 0), font=font)
 
-            # paste tile image + subtle border
             canvas.paste(pil_tile, (x0, y_img0))
             draw.rectangle(
                 [x0, y_img0, x0 + tile_w - 1, y_img0 + tile_h - 1],
@@ -684,11 +671,9 @@ def visualize_trajectory(
     *,
     mask: Optional[torch.Tensor] = None,  # [T,1,H,W] (agentview)
     boxes: Optional[List[torch.Tensor]] = None,  # list of [T,4] (agentview)
-    # ---- NEW: eye-in-hand (optional) ----
     eih_images: Optional[torch.Tensor] = None,  # [T,3,H,W]
     eih_mask: Optional[torch.Tensor] = None,  # [T,1,H,W]
     eih_boxes: Optional[List[torch.Tensor]] = None,  # list of [T,4]
-    # -------------------------------------
     gripper_opening: Optional[torch.Tensor] = None,  # [T] or [T,1], in [-1,1]
     save_dir: Optional[str] = None,
     step: Optional[int] = None,
@@ -709,7 +694,6 @@ def visualize_trajectory(
     device = images.device
     T, _, H, W = images.shape
 
-    # ---- NEW: validate eih tensors match T (and optionally allow different H/W if you want)
     if eih_images is not None:
         assert (
             eih_images.dim() == 4 and eih_images.shape[1] == 3
@@ -763,15 +747,12 @@ def visualize_trajectory(
             [left, _make_pad(H, left.dtype), right], dim=-1
         )  # width concat
 
-    # normalize + smooth masks
     mask = _norm_and_smooth_mask(mask)
     eih_mask = _norm_and_smooth_mask(eih_mask)
 
-    # validate + smooth boxes
     boxes = _validate_and_smooth_boxes(boxes)
     eih_boxes = _validate_and_smooth_boxes(eih_boxes)
 
-    # gripper
     if gripper_opening is not None:
         if gripper_opening.dim() == 1:
             gripper_opening = gripper_opening[:, None]
@@ -804,7 +785,6 @@ def visualize_trajectory(
 
     video_frames = []
     for t in range(T):
-        # ===================== agentview =====================
         base = images_vis[t].unsqueeze(0)  # [1,3,H,W]
 
         left = base.clone()
@@ -826,7 +806,6 @@ def visualize_trajectory(
                 blackout=blackout,
             )
 
-        # ---- PIL overlay on LEFT ONLY (text + gripper bar) ----
         need_left_pil = (text_list is not None) or (
             draw_gripper_bar and gripper_opening is not None
         )
@@ -864,10 +843,8 @@ def visualize_trajectory(
 
             left = TF.to_tensor(pil).to(device).unsqueeze(0)
 
-        # ===================== agentview row =====================
         agent_row = _make_row(left, right)  # [1,3,H,Wrow]
 
-        # ===================== eye-in-hand row (optional) =====================
         frame = agent_row
         if eih_images_vis is not None:
             ebase = eih_images_vis[t].unsqueeze(0)  # [1,3,H,W]
@@ -893,7 +870,6 @@ def visualize_trajectory(
 
             eih_row = _make_row(eleft, eright)  # [1,3,H,Wrow]
 
-            # ---- safety: ensure same width (should be true if both use same layout)
             assert (
                 agent_row.shape[-1] == eih_row.shape[-1]
             ), f"Row width mismatch: agent={agent_row.shape[-1]} vs eih={eih_row.shape[-1]}"
@@ -901,7 +877,6 @@ def visualize_trajectory(
             vpad = _make_vpad(agent_row.shape[-1], agent_row.dtype, h=12)
             frame = torch.cat([agent_row, vpad, eih_row], dim=-2)  # height concat
 
-        # ===================== save =====================
         if save_dir is not None and not save_video:
             fname = (
                 f"{prefix}_t{t:04d}.png"

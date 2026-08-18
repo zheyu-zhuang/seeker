@@ -155,24 +155,19 @@ class DiffusionPolicy(BaseImagePolicy):
             generator=generator,
         )
 
-        # Set diffusion steps.
         scheduler.set_timesteps(self.num_inference_steps)
 
         for t in scheduler.timesteps:
-            # Enforce conditioning before model call.
             trajectory[condition_mask] = condition_data[condition_mask]
 
-            # Predict residual / sample.
             model_output = model(
                 trajectory, t, local_cond=local_cond, global_cond=global_cond
             )
 
-            # One reverse step: x_t -> x_{t-1}.
             trajectory = scheduler.step(
                 model_output, t, trajectory, generator=generator, **kwargs
             ).prev_sample
 
-        # Re-apply conditioning at the end.
         trajectory[condition_mask] = condition_data[condition_mask]
 
         return trajectory
@@ -215,29 +210,22 @@ class DiffusionPolicy(BaseImagePolicy):
             obs_feature = self.obs_encoder(obs=obs, obs_index=obs_index)
         # Reshape back to [B, Do].
         global_cond = obs_feature.reshape(batch_size, -1)
-        # Generate inpainting mask.
         condition_mask = self.mask_generator(trajectory.shape)
 
-        # Sample forward-process noise.
         noise = torch.randn(trajectory.shape, device=trajectory.device)
         bsz = trajectory.shape[0]
-        # Sample random timestep for each sample.
         timesteps = torch.randint(
             0,
             self.noise_scheduler.config.num_train_timesteps,
             (bsz,),
             device=trajectory.device,
         ).long()
-        # Forward diffusion: add noise at timestep t.
         noisy_trajectory = self.noise_scheduler.add_noise(trajectory, noise, timesteps)
 
-        # Compute loss only on non-conditioned entries.
         loss_mask = ~condition_mask
 
-        # Enforce conditioning before prediction.
         noisy_trajectory[condition_mask] = cond_data[condition_mask]
 
-        # Predict residual.
         model = self.model
         pred = model(
             noisy_trajectory, timesteps, local_cond=local_cond, global_cond=global_cond

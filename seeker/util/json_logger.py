@@ -63,34 +63,25 @@ class JsonLogger:
         except FileNotFoundError:
             self.file = file = open(self.path, 'w+', buffering=1)
 
-        # Move the pointer (similar to a cursor in a text editor) to the end of the file
+        # Recover the last complete JSONL record and discard a partial trailing record.
         pos = file.seek(0, os.SEEK_END)
 
-        # Read each character in the file one at a time from the last
-        # character going backwards, searching for a newline character
-        # If we find a new line, exit the search
         while pos > 0 and file.read(1) != "\n":
             pos -= 1
             file.seek(pos, os.SEEK_SET)
-        # now the file pointer is at one past the last '\n'
-        # and pos is at the last '\n'.
         last_line_end = file.tell()
         
-        # find the start of second last line
         pos = max(0, pos-1)
         file.seek(pos, os.SEEK_SET)
         while pos > 0 and file.read(1) != "\n":
             pos -= 1
             file.seek(pos, os.SEEK_SET)
-        # now the file pointer is at one past the second last '\n'
         last_line_start = file.tell()
 
         if last_line_start < last_line_end:
-            # has last line of json
             last_line = file.readline()
             self.last_log = json.loads(last_line)
         
-        # remove the last incomplete line
         file.seek(last_line_end)
         file.truncate()
     

@@ -305,7 +305,6 @@ def get_square_box(
         max_x1 = (S - side).to(dtype=x1.dtype, device=x1.device)
         max_y1 = (S - side).to(dtype=y1.dtype, device=y1.device)
 
-        # Option A: clamp_min + tensor minimum (clear & robust)
         x1 = x1.clamp_min(0)
         y1 = y1.clamp_min(0)
         x1 = torch.minimum(x1, max_x1)
@@ -316,7 +315,6 @@ def get_square_box(
     else:
         # leave negatives / >S-1 as-is (caller can pad the crop)
         pass
-    # integer outputs
     x1 = x1.round().long()
     y1 = y1.round().long()
     x2 = x2.round().long()

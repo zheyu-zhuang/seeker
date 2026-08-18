@@ -1,8 +1,4 @@
-"""
-Back ported methods: call, set_attr from v0.26
-Disabled auto-reset after done
-Added render method.
-"""
+"""Asynchronous Gym environments with explicit resets and render helpers."""
 
 import os
 import numpy as np
@@ -41,40 +37,11 @@ class AsyncState(Enum):
 
 
 class AsyncVectorEnv(VectorEnv):
-    """Vectorized environment that runs multiple environments in parallel. It
-    uses `multiprocessing` processes, and pipes for communication.
-    Parameters
-    ----------
-    env_fns : iterable of callable
-        Functions that create the environments.
-    observation_space : `gym.spaces.Space` instance, optional
-        Observation space of a single environment. If `None`, then the
-        observation space of the first environment is taken.
-    action_space : `gym.spaces.Space` instance, optional
-        Action space of a single environment. If `None`, then the action space
-        of the first environment is taken.
-    shared_memory : bool (default: `True`)
-        If `True`, then the observations from the worker processes are
-        communicated back through shared variables. This can improve the
-        efficiency if the observations are large (e.g. images).
-    copy : bool (default: `True`)
-        If `True`, then the `reset` and `step` methods return a copy of the
-        observations.
-    context : str, optional
-        Context for multiprocessing. If `None`, then the default context is used.
-        Only available in Python 3.
-    daemon : bool (default: `True`)
-        If `True`, then subprocesses have `daemon` flag turned on; that is, they
-        will quit if the head process quits. However, `daemon=True` prevents
-        subprocesses to spawn children, so for some environments you may want
-        to have it set to `False`
-    worker : function, optional
-        WARNING - advanced mode option! If set, then use that worker in a subprocess
-        instead of a default one. Can be useful to override some inner vector env
-        logic, for instance, how resets on done are handled. Provides high
-        degree of flexibility and a high chance to shoot yourself in the foot; thus,
-        if you are writing your own worker, it is recommended to start from the code
-        for `_worker` (or `_worker_shared_memory`) method below, and add changes
+    """Run environments in subprocesses without resetting them automatically.
+
+    This variant provides Gym 0.26-style ``call`` and ``set_attr`` methods. Pass
+    ``dummy_env_fn`` to construct a non-rendering environment for metadata and
+    space discovery when the regular factory would create an OpenGL context.
     """
 
     def __init__(
@@ -94,9 +61,7 @@ class AsyncVectorEnv(VectorEnv):
         self.shared_memory = shared_memory
         self.copy = copy
 
-        # Added dummy_env_fn to fix OpenGL error in Mujoco
-        # disable any OpenGL rendering in dummy_env_fn, since it
-        # will conflict with OpenGL context in the forked child process
+        # Metadata discovery must not create a child process's OpenGL context.
         if dummy_env_fn is None:
             dummy_env_fn = env_fns[0]
         dummy_env = dummy_env_fn()

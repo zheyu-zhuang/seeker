@@ -123,32 +123,21 @@ class CropRandomizer(nn.Module):
 
 
 def crop_image_from_indices(images, crop_indices, crop_height, crop_width):
-    """
-    Crops images at the locations specified by @crop_indices. Crops will be
-    taken across all channels.
+    """Crop images across all channels at the supplied top-left indices.
 
     Args:
-        images (torch.Tensor): batch of images of shape [..., C, H, W]
-
-        crop_indices (torch.Tensor): batch of indices of shape [..., N, 2] where
-            N is the number of crops to take per image and each entry corresponds
-            to the pixel height and width of where to take the crop. Note that
-            the indices can also be of shape [..., 2] if only 1 crop should
-            be taken per image. Leading dimensions must be consistent with
-            @images argument. Each index specifies the top left of the crop.
-            Values must be in range [0, H - CH - 1] x [0, W - CW - 1] where
-            H and W are the height and width of @images and CH and CW are
-            @crop_height and @crop_width.
-
-        crop_height (int): height of crop to take
-
-        crop_width (int): width of crop to take
+        images: Tensor shaped ``[..., C, H, W]``.
+        crop_indices: Top-left ``(height, width)`` indices shaped ``[..., N, 2]``
+            or ``[..., 2]`` for a single crop. Leading dimensions must match
+            ``images`` and indices must keep each crop within the image.
+        crop_height: Crop height.
+        crop_width: Crop width.
 
     Returns:
-        crops (torch.Tesnor): cropped images of shape [..., C, @crop_height, @crop_width]
+        Crops shaped ``[..., N, C, crop_height, crop_width]``, or without ``N``
+        when a single-crop index was supplied.
     """
 
-    # make sure length of input shapes is consistent
     assert crop_indices.shape[-1] == 2
     ndim_im_shape = len(images.shape)
     ndim_indices_shape = len(crop_indices.shape)
@@ -156,26 +145,21 @@ def crop_image_from_indices(images, crop_indices, crop_height, crop_width):
         ndim_im_shape == ndim_indices_shape + 2
     )
 
-    # maybe pad so that @crop_indices is shape [..., N, 2]
     is_padded = False
     if ndim_im_shape == ndim_indices_shape + 2:
         crop_indices = crop_indices.unsqueeze(-2)
         is_padded = True
 
-    # make sure leading dimensions between images and indices are consistent
     assert images.shape[:-3] == crop_indices.shape[:-2]
 
     device = images.device
     image_c, image_h, image_w = images.shape[-3:]
     num_crops = crop_indices.shape[-2]
 
-    # make sure @crop_indices are in valid range
     assert (crop_indices[..., 0] >= 0).all().item()
     assert (crop_indices[..., 0] < (image_h - crop_height)).all().item()
     assert (crop_indices[..., 1] >= 0).all().item()
     assert (crop_indices[..., 1] < (image_w - crop_width)).all().item()
-
-    # convert each crop index (ch, cw) into a list of pixel indices that correspond to the entire window.
 
     # 2D index array with columns [0, 1, ..., CH - 1] and shape [CH, CW]
     crop_ind_grid_h = torch.arange(crop_height).to(device)
@@ -188,7 +172,7 @@ def crop_image_from_indices(images, crop_indices, crop_height, crop_width):
         (crop_ind_grid_h.unsqueeze(-1), crop_ind_grid_w.unsqueeze(-1)), dim=-1
     )
 
-    # Add above grid with the offset index of each sampled crop to get 2d indices for each crop.
+    # Offset the grid for every crop before flattening it for torch.gather.
     # After broadcasting, this will be shape [..., N, CH, CW, 2] and each crop has a [CH, CW, 2]
     # shape array that tells us which pixels from the corresponding source image to grab.
     grid_reshape = [1] * len(crop_indices.shape[:-1]) + [crop_height, crop_width, 2]
@@ -196,9 +180,7 @@ def crop_image_from_indices(images, crop_indices, crop_height, crop_width):
         grid_reshape
     )
 
-    # For using @torch.gather, convert to flat indices from 2D indices, and also
-    # repeat across the channel dimension. To get flat index of each pixel to grab for
-    # each sampled crop, we just use the mapping: ind = h_ind * @image_w + w_ind
+    # Convert 2D indices to flat indices and repeat them across channels.
     all_crop_inds = (
         all_crop_inds[..., 0] * image_w + all_crop_inds[..., 1]
     )  # shape [..., N, CH, CW]
@@ -229,33 +211,22 @@ def crop_image_from_indices(images, crop_indices, crop_height, crop_width):
 def sample_random_image_crops(
     images, crop_height, crop_width, num_crops, pos_enc=False
 ):
-    """
-    For each image, randomly sample @num_crops crops of size (@crop_height, @crop_width), from
-    @images.
+    """Randomly sample fixed-size crops from each image.
 
     Args:
-        images (torch.Tensor): batch of images of shape [..., C, H, W]
-
-        crop_height (int): height of crop to take
-
-        crop_width (int): width of crop to take
-
-        num_crops (n): number of crops to sample
-
-        pos_enc (bool): if True, also add 2 channels to the outputs that gives a spatial
-            encoding of the original source pixel locations. This means that the
-            output crops will contain information about where in the source image
-            it was sampled from.
+        images: Tensor shaped ``[..., C, H, W]``.
+        crop_height: Crop height.
+        crop_width: Crop width.
+        num_crops: Number of crops per image.
+        pos_enc: Append two channels containing normalized source coordinates.
 
     Returns:
-        crops (torch.Tensor): crops of shape (..., @num_crops, C, @crop_height, @crop_width)
-            if @pos_enc is False, otherwise (..., @num_crops, C + 2, @crop_height, @crop_width)
-
-        crop_inds (torch.Tensor): sampled crop indices of shape (..., N, 2)
+        A pair of crops shaped ``[..., num_crops, C, crop_height, crop_width]``
+        and top-left indices shaped ``[..., num_crops, 2]``. With ``pos_enc``,
+        the crops have ``C + 2`` channels.
     """
     device = images.device
 
-    # maybe add 2 channels of spatial encoding to the source image
     source_im = images
     if pos_enc:
         # spatial encoding [y, x] in [0, 1]
@@ -265,15 +236,12 @@ def sample_random_image_crops(
         pos_x = pos_x.float().to(device) / float(w)
         position_enc = torch.stack((pos_y, pos_x))  # shape [C, H, W]
 
-        # unsqueeze and expand to match leading dimensions -> shape [..., C, H, W]
         leading_shape = source_im.shape[:-3]
         position_enc = position_enc[(None,) * len(leading_shape)]
         position_enc = position_enc.expand(*leading_shape, -1, -1, -1)
 
-        # concat across channel dimension with input
         source_im = torch.cat((source_im, position_enc), dim=-3)
 
-    # make sure sample boundaries ensure crops are fully within the images
     image_c, image_h, image_w = source_im.shape[-3:]
     max_sample_h = image_h - crop_height
     max_sample_w = image_w - crop_width
@@ -305,23 +273,13 @@ def sample_random_image_crops(
 
 
 class BackgroundRandomizer(torch.nn.Module):
-    """
-    Memory-efficient background randomization for visual augmentation.
+    """Sample transformed backgrounds for visual augmentation.
 
     Background images are preloaded as uint8 and optionally kept on GPU.
-    Random geometric/photometric transforms and ImageNet normalization
-    are applied on-the-fly when sampling.
-
-    - Stored as uint8 for low memory footprint
-    - Moved to GPU once via `.to(device)` if desired
-    - Returns float32 ImageNet-normalized images
 
     Args:
-        input_shape (Tuple[int, int]): Output image size (H, W).
-        background_path (str): Directory of background images.
-
-    Returns:
-        torch.Tensor: [B, 3, H, W] ImageNet-normalized float32 tensor.
+        input_shape: Output image size ``(H, W)``.
+        background_path: Directory of background images.
     """
 
     def __init__(self, input_shape: Tuple[int, int], background_path: str):
@@ -343,9 +301,7 @@ class BackgroundRandomizer(torch.nn.Module):
         )
 
     def get_config(self) -> dict:
-        """
-        Return config dict for serialization.
-        """
+        """Return the serializable configuration."""
         return {
             "input_shape": (self.H, self.W),
             "num_backgrounds": int(self.backgrounds_u8.shape[0]),
@@ -354,11 +310,7 @@ class BackgroundRandomizer(torch.nn.Module):
 
     @torch.no_grad()
     def forward(self, num_samples: int) -> torch.Tensor:
-        """
-        Sample random backgrounds and return ImageNet-normalized float32 tensor:
-            [num_samples, 3, H, W]
-        """
-        # sanity checks
+        """Return ImageNet-normalized samples shaped ``[num_samples, 3, H, W]``."""
         assert num_samples > 0, "num_samples must be > 0"
         N_total = int(self.backgrounds_u8.shape[0])
         msg = f"Requested {num_samples} samples exceeds available backgrounds={N_total}"
@@ -373,21 +325,12 @@ class BackgroundRandomizer(torch.nn.Module):
 
         bg_u8 = self.backgrounds_u8.index_select(0, idx)  # [B,3,H,W] uint8
         bg = bg_u8.to(torch.float32).div_(255.0)
-        # transforms in float space, then normalize
         bg = self._random_transform(bg)
         bg = normalize_imagenet(bg, source="float01")
         return bg
 
-    # ------------------------------------------------------------------ #
-    # Transforms
-    # ------------------------------------------------------------------ #
     def _random_transform(self, bg: torch.Tensor) -> torch.Tensor:
-        """
-        bg: [B,3,H,W] float in [0,1]
-        Applies:
-          1) random rotation in [0,360)
-          2) random brightness in [-0.1, +0.1]
-        """
+        """Rotate ``[B, 3, H, W]`` inputs and shift their brightness."""
         B, _, H, W = bg.shape
         if (H != self.H) or (W != self.W):
             bg = F.interpolate(
@@ -404,13 +347,8 @@ class BackgroundRandomizer(torch.nn.Module):
 
         return bg.clamp(0.0, 1.0)
 
-    # ------------------------------------------------------------------ #
-    # Loading
-    # ------------------------------------------------------------------ #
     def _preload_all_u8(self, background_path: str) -> torch.Tensor:
-        """
-        Preload all images into uint8 tensor [N,3,H,W] on CPU.
-        """
+        """Preload images into a CPU uint8 tensor shaped ``[N, 3, H, W]``."""
         if os.path.isfile(background_path):
             return self._load_background_pack(background_path)
 

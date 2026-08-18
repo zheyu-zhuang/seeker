@@ -93,10 +93,12 @@ seeker rerender-dataset \
 Then launch:
 
 ```bash
-jupyter notebook notebooks/inspect_seeker_weights.ipynb
+jupyter notebook seeker_demo.ipynb
 ```
 
-The notebook loads `.weights/seeker.mimicgen.pth` and renders its predicted soft attention mask and tight crop. See [Data](#data) for other tasks and cache formats.
+The notebook loads `.weights/seeker.mimicgen.pth` and shows the coarse soft
+attention mask and derived region of interest over a recorded demonstration
+for both checkpoint views. See [Data](#data) for other tasks and cache formats.
 
 ## Training
 
