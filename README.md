@@ -21,8 +21,6 @@ Zheyu Zhuang¹ · Ruiyu Wang¹ · Nick Heppert² · Johannes Fabian Hahn³ · Ab
 
 _¹KTH Royal Institute of Technology &nbsp;&nbsp;²University of Freiburg &nbsp;&nbsp;³Universität Hamburg_
 
-## Citation
-
 ```bibtex
 @article{zhuang2026seeker,
   title   = {Attention from Action, for Action: Emergent Visual Bottlenecks for Policy Learning},
@@ -31,7 +29,6 @@ _¹KTH Royal Institute of Technology &nbsp;&nbsp;²University of Freiburg &nbsp;
   eprint  = {2608.13422},
   archivePrefix = {arXiv},
   url     = {https://arxiv.org/abs/2608.13422},
-  note    = {CoRL 2026}
 }
 ```
 
