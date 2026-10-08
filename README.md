@@ -22,13 +22,11 @@ Zheyu Zhuang¹ · Ruiyu Wang¹ · Nick Heppert² · Johannes Fabian Hahn³ · Ab
 _¹KTH Royal Institute of Technology &nbsp;&nbsp;²University of Freiburg &nbsp;&nbsp;³Universität Hamburg_
 
 ```bibtex
-@article{zhuang2026seeker,
-  title   = {Attention from Action, for Action: Emergent Visual Bottlenecks for Policy Learning},
-  author  = {Zhuang, Zheyu and Wang, Ruiyu and Heppert, Nick and Hahn, Johannes Fabian and Valada, Abhinav and Pokorny, Florian T. and Kragic, Danica},
-  year    = {2026},
-  eprint  = {2608.13422},
-  archivePrefix = {arXiv},
-  url     = {https://arxiv.org/abs/2608.13422},
+@inproceedings{zhuang2026seeker,
+  title     = {Attention from Action, for Action: Emergent Visual Bottlenecks for Policy Learning},
+  author    = {Zhuang, Zheyu and Wang, Ruiyu and Heppert, Nick and Hahn, Johannes Fabian and Valada, Abhinav and Pokorny, Florian T. and Kragic, Danica},
+  booktitle = {Proceedings of the 10th Conference on Robot Learning (CoRL)},
+  year      = {2026},
 }
 ```
 
